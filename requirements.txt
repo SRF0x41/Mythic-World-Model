@@ -1,0 +1,2 @@
+# Core
+# Python 3.11+ stdlib (sqlite3, json, uuid) is sufficient — no external deps required
