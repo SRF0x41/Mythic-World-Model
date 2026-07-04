@@ -1,41 +1,12 @@
 import sqlite3
 import uuid
 from datetime import datetime
-from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "sources.db"
-
-
-def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+from database import get_connection, init_db as _init_db
 
 
 def init_db():
-    conn = get_connection()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS sources (
-            id TEXT PRIMARY KEY,
-            url TEXT,
-            origin TEXT,
-            author TEXT,
-            published_at TEXT,
-            source_type TEXT NOT NULL,
-            credibility_score REAL CHECK(credibility_score BETWEEN 0.0 AND 1.0),
-            summary TEXT,
-            raw_text TEXT,
-            ingested_at TEXT NOT NULL DEFAULT (datetime('now')),
-            UNIQUE(url, ingested_at)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_sources_type ON sources(source_type);
-        CREATE INDEX IF NOT EXISTS idx_sources_published ON sources(published_at);
-        CREATE INDEX IF NOT EXISTS idx_sources_ingested ON sources(ingested_at);
-    """)
-    conn.commit()
-    conn.close()
+    _init_db(["sources"])
 
 
 def add_source(url, source_type, *, origin=None, author=None,
