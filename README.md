@@ -43,10 +43,16 @@ Nothing exists without provenance. Every object in the system can be traced back
 
 Built on a minimal, fully local-first stack:
 
-- **Python** — reasoning and orchestration layer
+- **Python** — reasoning and orchestration layer (zero external dependencies for the core)
 - **SQLite** — persistent knowledge substrate
 
 No distributed systems, no external databases, no heavyweight infrastructure. Every transformation is explicit. Every object is inspectable. Every relationship is queryable.
+
+### Database Layout
+
+All layers and the ontology share a single SQLite database (`database/mythic_world_model.db`). Each layer's tables keep their original names — there is no prefixing needed since all table names are already unique across layers. This simplifies cross-layer queries and provenance tracing.
+
+For the detailed schema, see [mtw_schema.md](./mtw_schema.md). The full system specification is in [mythic_world_model_constitution.md](./mythic_world_model_constitution.md).
 
 ---
 
@@ -56,6 +62,7 @@ The system transforms raw information into increasingly abstract layers of under
 
 | Layer | Directory | Question Answered |
 |-------|-----------|-------------------|
+| **0 — Verification** | (pre-sources) | Is this text actually a source or noise? |
 | **1 — Sources** | [`sources/`](./sources/SOURCES_LAYER.md) | What information do we possess? |
 | **2 — Evidence** | [`evidence/`](./evidence/EVIDENCE_LAYER.md) | What does this source actually support? |
 | **3 — Signals** | [`signals/`](./signals/SIGNALS_LAYER.md) | What patterns consistently emerge? |
@@ -65,11 +72,13 @@ The system transforms raw information into increasingly abstract layers of under
 | **7 — Predictions** | [`predictions/`](./predictions/PREDICTIONS_LAYER.md) | If this model is correct, what should happen next? |
 | **8 — World Models** | [`world_models/`](./world_models/WORLD_MODELS_LAYER.md) | What coherent story ties everything together? |
 
-Each layer maintains explicit references to the objects that produced it and the objects it supports, ensuring full provenance from every conclusion back to the original source.
+Each layer maintains explicit references to the objects that produced it and the objects it supports, ensuring full provenance from every conclusion back to the original source. All tables live in a single shared database.
 
 ```
 Source → Evidence → Signal → Concept → Hypothesis → Model → Prediction → World Model
 ```
+
+Before any source enters Layer 1, the **verification** step classifies raw text as `SOURCE` or `NOISE`. Verification rejects ads, paywalls, login pages, error pages, and bot detection challenges before any extraction LLM calls are made, saving time and keeping the graph clean.
 
 ---
 
@@ -83,12 +92,32 @@ Nothing is discarded. Every observation remains available as evidence for future
 
 ## Usage
 
+Install dependencies and initialize the database:
+
+```bash
+pip install -r requirements.txt
+```
+
 Each layer exposes a database module with an `init_db()` function and CRUD operations:
 
 ```python
-from sources import init_db, add_source
+from database import init_db
 init_db()
+
+from sources import add_source
 source_id = add_source("https://example.com/article", "article", author="Jane Doe")
 ```
 
-See each layer's documentation for its full API.
+See each layer's `*_LAYER.md` documentation for its full API.
+
+## Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `requests` | HTTP client for fetching sources and LM API calls |
+| `tiktoken` | Token counting for LLM input windows |
+| `certifi` / `charset-normalizer` / `idna` / `regex` / `urllib3` | Transitive dependencies |
+
+## Dev Notes
+
+- Perhaps credibility scores should be brief paragraphs instead of hard rankings
